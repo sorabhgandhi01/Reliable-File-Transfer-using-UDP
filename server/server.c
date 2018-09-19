@@ -108,8 +108,12 @@ int main(int argc, char **argv)
 					f_size = st.st_size;			//Size of the file
 
 					fptr = fopen(flname_recv, "rb");
+					
+					if ((f_size % BUF_SIZE) != 0)
+						total_pckt = (f_size / BUF_SIZE) + 1;				//Number of packets to send
+					else
+						total_pckt = (f_size / BUF_SIZE);
 
-					total_pckt = f_size / BUF_SIZE;					//Number of packets to send
 					printf("Total number of packets ---> %d\n", total_pckt);
 					
 					length = sizeof(cl_addr);
