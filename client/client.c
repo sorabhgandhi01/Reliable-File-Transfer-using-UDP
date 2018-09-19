@@ -1,5 +1,11 @@
 #include "c_utility.h"
 
+struct frame_t {
+	long int ID;
+	long int length;
+	char data[BUF_SIZE];
+};
+
 void print_error(char *msg)
 {
 	perror(msg);
@@ -14,6 +20,7 @@ int main(int argc, char **argv)
 	}
 
 	struct sockaddr_in send_addr, from_addr;
+	struct frame_t frame;
 	ssize_t numRead;
 	ssize_t length;
 	int cfd;
@@ -23,6 +30,8 @@ int main(int argc, char **argv)
 	char ack_recv[50];
 	char cmd_send[50];
 	//char msg_send[BUF_SIZE];
+
+	FILE *fptr;
 
 	memset(ack_send, 0, sizeof(ack_send));
 	memset(ack_recv, 0, sizeof(ack_recv));
@@ -52,9 +61,39 @@ int main(int argc, char **argv)
 			print_error("Client: send");
 
 
-		if ((strcmp(cmd, "get")) && (flname != NULL) == 0) {
+		if ((strcmp(cmd, "get") == 0) && (flname[0] != '\0' )) {
 
+			long int total_pckt = 0, bytes_rec = 0, i = 0;
 
+			recvfrom(cfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
+			sendto(cfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
+
+			if (total_pckt > 0) {
+				fptr = fopen(flname, "wb");
+
+				for (i = 1; i <= total_pckt; i++)
+				{
+					memset(&frame, 0, sizeof(frame));
+
+					recvfrom(cfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
+					sendto(cfd, &(frame.ID), sizeof(frame.ID), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
+
+					if ((frame.ID < i) || (frame.ID > i))
+						i--;
+					else {
+						fwrite(frame.data, 1, frame.length, fptr);
+						printf("frame.ID ---> %ld	frame.length ---> %ld\n", frame.ID, frame.length);
+						bytes_rec += frame.length;
+					}
+
+					if (i == total_pckt)
+						printf("File recieved\n");
+				}
+				printf("Total bytes recieved ---> %ld\n", bytes_rec);
+				fclose(fptr);
+			}
+			else
+				printf("File is empty\n");
 		}
 		else if ((strcmp(cmd, "put")) && (flname != NULL) == 0) {
 
