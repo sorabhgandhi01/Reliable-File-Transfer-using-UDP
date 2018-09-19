@@ -96,20 +96,19 @@ int main(int argc, char **argv)
 		}
 		else if (strcmp(cmd_recv, "delete") == 0) {
 
-			if (flname_recv == NULL)
+			if (flname_recv == '\0')
 				print_msg("No file given\n");
 
 			if(access(flname_recv, F_OK) == -1)
-				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));			
-#if 0
-			if(access(flname_recv, R_OK) == -1)
-				sendto(sfd, "File does not have read permission", 34, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-#endif
-			else {
-				printf("Filename is %s\n", flname_recv);
-
-				remove(flname_recv);
-				sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			else{
+				if(access(flname_recv, R_OK) == -1)
+					sendto(sfd, "File does not have read permission", 34, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				else {
+					printf("Filename is %s\n", flname_recv);
+					remove(flname_recv);
+					sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				}
 			}
 		}
 		else if (strcmp(cmd_recv, "ls") == 0) {
