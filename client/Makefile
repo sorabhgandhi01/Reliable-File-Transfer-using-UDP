@@ -9,4 +9,4 @@ client.o : client.c
 	cc -Wall -Werror $(INC) -c client.c
 
 clean :
-	rm -f $(EXE) $(objects) *.txt *.log
+	rm -f client $(objects) *.txt *.log

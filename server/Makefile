@@ -10,4 +10,4 @@ server.o : server.c
 	cc -Wall -Werror $(INC) -c server.c
 
 clean :
-	rm -f $(EXE) $(objects) *.txt *.log
+	rm -f server $(objects) *.txt *.log
