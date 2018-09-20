@@ -27,6 +27,11 @@ int ls(FILE *f)
 	return 0; 
 }                                             
 
+void encrypt_data(char data, int key)
+{
+	data = data + key;
+}
+
 static void print_msg(const char *msg, ...)
 {
 	va_list va_args;
@@ -94,10 +99,8 @@ int main(int argc, char **argv)
 
 		sscanf(msg_recv, "%s %s", cmd_recv, flname_recv);
 
-		if (strcmp(cmd_recv, "get") == 0) {
+		if ((strcmp(cmd_recv, "get") == 0) && (flname_recv[0] != '\0')) {
 			print_msg("Server: Get called with file name --> %s\n", flname_recv);
-
-			if (flname_recv[0] != '\0') {
 				
 				if (access(flname_recv, F_OK) == 0) {
 
@@ -125,7 +128,7 @@ int main(int argc, char **argv)
 						break;
 					}
 
-					for(i = 1; i <= total_pckt; i++)
+					for (i = 1; i <= total_pckt; i++)
 					{
 						memset(&frame, 0, sizeof(frame));
 						ack_num = 0;
@@ -135,7 +138,7 @@ int main(int argc, char **argv)
 						sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 						recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
 
-						while(ack_num != frame.ID)
+						while (ack_num != frame.ID)
 						{
 							sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 							recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
@@ -155,35 +158,56 @@ int main(int argc, char **argv)
 				else {
 					//sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 				}
-			}
-			else {
-				//sendto(sfd, "No filename given", 17, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-			}
-
+			
 		}
-		else if (strcmp(cmd_recv, "put") == 0) {
+		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] = '\0')) {
 			print_msg("Server: Put called with file name --> %s\n", flname_recv);
 
-			if (sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)
-				print_error("Server: send");
-		}
-		else if (strcmp(cmd_recv, "delete") == 0) {
+			long int total_pckt = 0, bytes_rec = 0, i = 0;
 
-			if (flname_recv[0] == '\0') {
-				print_msg("No file given\n");
-				sendto(sfd, "No filename given", 17, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			recvfrom(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+			sendto(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+
+			if (total_pckt > 0) {
+				fptr = fopen(flname_recv, "wb");
+
+				for (i = 1; i <= total_pckt; i++)
+				{
+					memset(&frame, 0, sizeof(frame));
+
+					recvfrom(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+				       	sendto(sfd, &(frame.ID), sizeof(frame.ID), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+
+					if ((frame.ID < i) || (frame.ID > i)) {
+						i--;
+					}
+					else {
+						fwrite(frame.data, 1, frame.length, fptr);
+						printf("frame.ID ----> %ld	frame.length ----> %ld\n", frame.ID, frame.length);
+						bytes_rec += frame.length;
+					}
+					
+					if (i == total_pckt)
+						printf("File recieved\n");
+				}
+			       printf("Total bytes recieved ---> %ld\n", bytes_rec);
+			       fclose(fptr);
 			}
 			else {
-				if(access(flname_recv, F_OK) == -1)
-					sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-				else{
-					if(access(flname_recv, R_OK) == -1)
-						sendto(sfd, "File does not have read permission", 34, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-					else {
-						print_msg("Filename is %s\n", flname_recv);
-						remove(flname_recv);
-						sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-					}
+				printf("File is empty\n");
+			}
+		}
+		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] = '\0')) {
+
+			if(access(flname_recv, F_OK) == -1)
+				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			else{
+				if(access(flname_recv, R_OK) == -1)
+					sendto(sfd, "File does not have read permission", 34, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				else {
+					print_msg("Filename is %s\n", flname_recv);
+					remove(flname_recv);
+					sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 				}
 			}
 		}
