@@ -17,6 +17,6 @@
 #include <stdarg.h>
 #include <dirent.h>
 
-#define BUF_SIZE 100
+#define BUF_SIZE 2048
 
 #endif

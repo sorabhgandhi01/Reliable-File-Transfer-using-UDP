@@ -101,65 +101,66 @@ int main(int argc, char **argv)
 
 		if ((strcmp(cmd_recv, "get") == 0) && (flname_recv[0] != '\0')) {
 			print_msg("Server: Get called with file name --> %s\n", flname_recv);
+			if (access(flname_recv, F_OK) == 0) {
 				
-				if (access(flname_recv, F_OK) == 0) {
-
-					int total_pckt = 0, repeat_send = 0;
-					long int i = 0;
+				int total_pckt = 0, repeat_send = 0;
+				long int i = 0;
 					
-					stat(flname_recv, &st);
-					f_size = st.st_size;			//Size of the file
+				stat(flname_recv, &st);
+				f_size = st.st_size;			//Size of the file
 
-					fptr = fopen(flname_recv, "rb");
+				fptr = fopen(flname_recv, "rb");
 					
-					if ((f_size % BUF_SIZE) != 0)
-						total_pckt = (f_size / BUF_SIZE) + 1;				//Number of packets to send
-					else
-						total_pckt = (f_size / BUF_SIZE);
+				if ((f_size % BUF_SIZE) != 0)
+					total_pckt = (f_size / BUF_SIZE) + 1;				//Number of packets to send
+				else
+					total_pckt = (f_size / BUF_SIZE);
 
-					printf("Total number of packets ---> %d\n", total_pckt);
+				printf("Total number of packets ---> %d\n", total_pckt);
 					
-					length = sizeof(cl_addr);
+				length = sizeof(cl_addr);
 
-					sendto(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));	//Send number of packets (to be transmitted) to reciever
+				sendto(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));	//Send number of packets (to be transmitted) to reciever
 					
-					if (recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length) < 0) {
-						printf("File not sent\n");
-						break;
-					}
+				if (recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length) < 0) {
+					printf("File not sent\n");
+					break;
+				}
 
-					for (i = 1; i <= total_pckt; i++)
+				for (i = 1; i <= total_pckt; i++)
+				{
+					memset(&frame, 0, sizeof(frame));
+					ack_num = 0;
+					frame.ID = i;
+					frame.length = fread(frame.data, 1, BUF_SIZE, fptr);
+
+					sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+					recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+
+					while (ack_num != frame.ID)
 					{
-						memset(&frame, 0, sizeof(frame));
-						ack_num = 0;
-						frame.ID = i;
-						frame.length = fread(frame.data, 1, BUF_SIZE, fptr);
-
 						sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 						recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
 
-						while (ack_num != frame.ID)
-						{
-							sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-							recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
-
-							repeat_send++;
-							if (repeat_send == 10) {
-								break;
-							}
+						repeat_send++;
+						if (repeat_send == 10) {
+							break;
 						}
-
-						printf("frame ----> %ld	Ack ----> %ld \n", i, ack_num);
-
-						if (total_pckt == ack_num)
-							printf("File sent\n");
 					}
+
+					printf("frame ----> %ld	Ack ----> %ld \n", i, ack_num);
+
+					if (total_pckt == ack_num)
+						printf("File sent\n");
 				}
-				else {
-					//sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-				}
-			
+				fclose(fptr);
+			}
+			else {
+				//sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				printf("Invalid Filename\n");
+			}
 		}
+
 		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] = '\0')) {
 			print_msg("Server: Put called with file name --> %s\n", flname_recv);
 
@@ -243,9 +244,10 @@ int main(int argc, char **argv)
 		}
 		else {
 			print_msg("Server: Unkown command. Please try again\n");
+			break;
 
-			if (sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)
-				print_error("Server: send");
+		//	if (sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)
+		//		print_error("Server: send");
 		}
 		//
 	}
