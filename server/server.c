@@ -27,11 +27,6 @@ int ls(FILE *f)
 	return 0; 
 }                                             
 
-void encrypt_data(char data, int key)
-{
-	data = data + key;
-}
-
 static void print_msg(const char *msg, ...)
 {
 	va_list va_args;
@@ -57,6 +52,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in sv_addr, cl_addr;
 	struct stat st;
 	struct frame_t frame;
+	struct timeval t_out = {0, 1000000};
 
 	int sfd;
 	long int ack_num = 0;
@@ -103,13 +99,15 @@ int main(int argc, char **argv)
 			print_msg("Server: Get called with file name --> %s\n", flname_recv);
 			if (access(flname_recv, F_OK) == 0) {
 				
-				int total_frame = 0, resend_frame = 0, drop_frame = 0;
+				int total_frame = 0, resend_frame = 0, drop_frame = 0, t_out_flag = 0;
 				long int i = 0;
 					
 				stat(flname_recv, &st);
 				f_size = st.st_size;			//Size of the file
 
-				fptr = fopen(flname_recv, "rb");
+				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval));   //Set timeout for ack reciving from client
+
+				fptr = fopen(flname_recv, "rb");        //open the file to be sent
 					
 				if ((f_size % BUF_SIZE) != 0)
 					total_frame = (f_size / BUF_SIZE) + 1;				//Number of packets to send
@@ -121,10 +119,19 @@ int main(int argc, char **argv)
 				length = sizeof(cl_addr);
 
 				sendto(sfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));	//Send number of packets (to be transmitted) to reciever
-					
-				if (recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length) < 0) {
-					printf("File not sent\n");
-					break;
+				recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+
+				while (ack_num != total_frame)
+				{
+					sendto(sfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)); 
+					recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+
+					resend_frame++;
+
+					if (resend_frame == 20) {
+						t_out_flag = 1;
+						break;
+					}
 				}
 
 				for (i = 1; i <= total_frame; i++)
@@ -141,12 +148,20 @@ int main(int argc, char **argv)
 					{
 						sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 						recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
-						drop_frame++;
-						resend_frame++;
-						printf("frame ---> %d	dropped, %d times\n", frame.ID, drop_frame);
+
+						drop_frame++; resend_frame++;
+
+						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
+
 						if (resend_frame == 200) {
+							t_out_flag = 1;
 							break;
 						}
+					}
+
+					if (t_out_flag == 1) {
+						printf("File not sent\n");
+						break;
 					}
 
 					printf("frame ----> %ld	Ack ----> %ld \n", i, ack_num);
@@ -155,6 +170,9 @@ int main(int argc, char **argv)
 						printf("File sent\n");
 				}
 				fclose(fptr);
+
+				struct timeval t_out = {0, 0};
+				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 			}
 			else {
 				//sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
@@ -162,13 +180,14 @@ int main(int argc, char **argv)
 			}
 		}
 
-		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] = '\0')) {
+		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] != '\0')) {
 			print_msg("Server: Put called with file name --> %s\n", flname_recv);
 
 			long int total_pckt = 0, bytes_rec = 0, i = 0;
 
 			recvfrom(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
 			sendto(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			printf("Total frame ---> %ld\n", total_pckt);
 
 			if (total_pckt > 0) {
 				fptr = fopen(flname_recv, "wb");
@@ -199,7 +218,7 @@ int main(int argc, char **argv)
 				printf("File is empty\n");
 			}
 		}
-		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] = '\0')) {
+		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] != '\0')) {
 
 			if(access(flname_recv, F_OK) == -1)
 				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
