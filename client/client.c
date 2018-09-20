@@ -22,12 +22,14 @@ int main(int argc, char **argv)
 	struct sockaddr_in send_addr, from_addr;
 	struct stat st;
 	struct frame_t frame;
+	struct timeval t_out = {0, 1000000};
 
 	ssize_t numRead;
 	ssize_t length;
 	off_t f_size = 0;
 	int cfd;
 	long int ack_num = 0;
+
 	char ack_send[4] = "ACK";
 	char cmd[10];
 	char flname[20];
@@ -104,28 +106,42 @@ int main(int argc, char **argv)
 		else if ((strcmp(cmd, "put") == 0) && (flname[0] != '\0')) {
 			
 			if (access(flname, F_OK) == 0) {
-				int total_pckt = 0, repeat_send = 0;
+				int total_frame = 0, resend_frame = 0, drop_frame = 0, t_out_flag = 0;
 				long int i = 0;
 
 				stat(flname, &st);
 				f_size = st.st_size;
 
+				setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
+
 				fptr = fopen(flname, "rb");
 
 				if ((f_size % BUF_SIZE) != 0)
-					total_pckt = (f_size / BUF_SIZE) + 1;
+					total_frame = (f_size / BUF_SIZE) + 1;
 				else
-					total_pckt = (f_size / BUF_SIZE);
+					total_frame = (f_size / BUF_SIZE);
 
-				printf("Total number of packets ---> %d\n", total_pckt);
+				printf("Total number of packets ---> %d\n", total_frame);
 
-				sendto(cfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
-				if (recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length) < 0) {
-					printf("File not sent\n");
-					break;
+				sendto(cfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
+				recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
+
+				printf("Ack num ---> %ld\n", ack_num);
+
+				while (ack_num != total_frame)
+				{
+					sendto(cfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
+					recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length); 
+					
+					resend_frame++;
+
+					if (resend_frame == 20) {
+						t_out_flag = 1;
+						break;
+					}
 				}
 
-				for (i = 1; i <= total_pckt; i++)
+				for (i = 1; i <= total_frame; i++)
 				{
 					memset(&frame, 0, sizeof(frame));
 					ack_num = 0;
@@ -140,17 +156,30 @@ int main(int argc, char **argv)
 						sendto(cfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
 						recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
 
-						repeat_send++;
-						if (repeat_send == 10) {
+						resend_frame++; drop_frame++;
+
+						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
+
+						if (resend_frame == 200) {
+							t_out_flag = 1;
 							break;
 						}
 					}
 
+					if (t_out_flag == 1) {
+						printf("File not sent\n");
+						break;
+					}
+
 					printf("frame ----> %ld	Ack ----> %ld\n", i, ack_num);
 
-					if (total_pckt == ack_num)
+					if (total_frame == ack_num)
 						printf("File sent\n");
 				}
+				fclose(fptr);
+
+				struct timeval t_out = {0, 0};
+				setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 			}
 		}
 		else if ((strcmp(cmd, "delete") == 0) && (flname[0] != '\0')) {
