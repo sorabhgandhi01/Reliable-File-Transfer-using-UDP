@@ -161,7 +161,7 @@ int main(int argc, char **argv)
 			}
 		}
 
-		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] = '\0')) {
+		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] != '\0')) {
 			print_msg("Server: Put called with file name --> %s\n", flname_recv);
 
 			long int total_pckt = 0, bytes_rec = 0, i = 0;
@@ -198,7 +198,7 @@ int main(int argc, char **argv)
 				printf("File is empty\n");
 			}
 		}
-		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] = '\0')) {
+		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] != '\0')) {
 
 			if(access(flname_recv, F_OK) == -1)
 				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
