@@ -22,7 +22,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in send_addr, from_addr;
 	struct stat st;
 	struct frame_t frame;
-	struct timeval t_out = {0, 1000000};
+	struct timeval t_out = {2, 0};
 
 	ssize_t numRead;
 	ssize_t length;
@@ -155,10 +155,10 @@ int main(int argc, char **argv)
 					{
 						sendto(cfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
 						recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
-
+						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
 						resend_frame++; drop_frame++;
 
-						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
+						//printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
 
 						if (resend_frame == 200) {
 							t_out_flag = 1;
@@ -177,7 +177,8 @@ int main(int argc, char **argv)
 						printf("File sent\n");
 				}
 				fclose(fptr);
-
+				
+				printf("Disable the timeout\n");
 				struct timeval t_out = {0, 0};
 				setsockopt(cfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 			}

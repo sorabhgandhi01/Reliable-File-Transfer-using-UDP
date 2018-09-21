@@ -52,7 +52,7 @@ int main(int argc, char **argv)
 	struct sockaddr_in sv_addr, cl_addr;
 	struct stat st;
 	struct frame_t frame;
-	struct timeval t_out = {0, 1000000};
+	struct timeval t_out = {0, 0};
 
 	int sfd;
 	long int ack_num = 0;
@@ -105,6 +105,7 @@ int main(int argc, char **argv)
 				stat(flname_recv, &st);
 				f_size = st.st_size;			//Size of the file
 
+				t_out.tv_sec = 2;
 				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval));   //Set timeout for ack reciving from client
 
 				fptr = fopen(flname_recv, "rb");        //open the file to be sent
@@ -148,8 +149,9 @@ int main(int argc, char **argv)
 					{
 						sendto(sfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 						recvfrom(sfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
-
-						drop_frame++; resend_frame++;
+						printf("frame ---> %ld	dropped, %d times\n", frame.ID, ++drop_frame);
+						
+						resend_frame++;
 
 						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
 
@@ -158,6 +160,8 @@ int main(int argc, char **argv)
 							break;
 						}
 					}
+
+					resend_frame = 0;
 
 					if (t_out_flag == 1) {
 						printf("File not sent\n");
@@ -171,7 +175,7 @@ int main(int argc, char **argv)
 				}
 				fclose(fptr);
 
-				struct timeval t_out = {0, 0};
+				t_out.tv_sec = 0;
 				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 			}
 			else {
