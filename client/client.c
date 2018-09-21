@@ -51,6 +51,9 @@ int main(int argc, char **argv)
 	if ((cfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		print_error("CLient: socket");
 
+	if (fcntl(cfd, F_SETFL, O_NONBLOCK) == -1)
+		print_error("Client: fcntl");
+
 	for (;;) {
 
 		memset(cmd_send, 0, sizeof(cmd_send));
