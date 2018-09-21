@@ -51,8 +51,8 @@ int main(int argc, char **argv)
 	if ((cfd = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
 		print_error("CLient: socket");
 
-	if (fcntl(cfd, F_SETFL, O_NONBLOCK) == -1)
-		print_error("Client: fcntl");
+	/*if (fcntl(cfd, F_SETFL, O_NONBLOCK) == -1)
+		print_error("Client: fcntl");*/
 
 	for (;;) {
 
@@ -158,16 +158,16 @@ int main(int argc, char **argv)
 					{
 						sendto(cfd, &(frame), sizeof(frame), 0, (struct sockaddr *) &send_addr, sizeof(send_addr));
 						recvfrom(cfd, &(ack_num), sizeof(ack_num), 0, (struct sockaddr *) &from_addr, (socklen_t *) &length);
-						printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
-						resend_frame++; drop_frame++;
-
-						//printf("frame ---> %ld	dropped, %d times\n", frame.ID, drop_frame);
+						printf("frame ---> %ld	dropped, %d times\n", frame.ID, ++drop_frame);
+						resend_frame++;
 
 						if (resend_frame == 200) {
 							t_out_flag = 1;
 							break;
 						}
 					}
+					drop_frame = 0;
+					resend_frame = 0;
 
 					if (t_out_flag == 1) {
 						printf("File not sent\n");
