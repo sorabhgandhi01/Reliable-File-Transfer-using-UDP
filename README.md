@@ -8,8 +8,8 @@ INTRODUCTION
 
 BUILD and RUN STEPS
 -------------------
-	This project only supports Linux development environment. The following section covers in 
-	details on how to build and run the client and server module.
+	This project only supports Linux development environment. The following section covers in detail on 
+	how to build and run the client and server module.
 
 	Note:- The build system for this project uses GNU MAKE utility.
 
@@ -43,25 +43,57 @@ IMPLEMENTATION SUMMARY
 
 	The supported user command includes,
 
-	get [filename]	-	This command is used to get the specified file from server to client
+	get [filename]		-	This command is used to get the specified file from server to client
 	==============
 		
 		SERVER side Implementation
 		
 			1.) On recieving the 'get' request from client, the server first checks if 
-			    the file name is specified or not. If filename is null, then server does 
+			    the filename is specified or not. If filename is null, then server does 
 			    not send anything back to client
 			2.) Then it checks if the specified file is present and have appropriate read 
 			    permission. If the file is not present or does not have appropriate 
 			    permission, then server does not send anything back to the client
-			3.) Set a timeout of 2 seconds for the recieve call on the server socket.
+			3.) Set a timeout of 2 seconds for the recieve call on the server socket
 			4.) After this it opens the file, gets the file size and calculated the number 
 			    of frames required to send the file
 			5.) First it sends the total number of frames and then check if the recieved 
-			    acknowledegement match to the total number of frames.
+			    acknowledegement match to the total number of frames
 			6.) Finally send all the frames sequentially and check the recieved ack. If 
-			    ack does not match then Keep resending the frames till the ack matches.
+			    ack does not match then Keep resending the frames till the ack matches
 
 		CLIENT side Implementation
 
-			
+			1.) Server does not transfer any message if the filename is NULL or not present
+			    in the directory
+			2.) Set a timeout of 2 seconds for the recieve call on the client packet. If
+			    client does not recieve the number of frames in 2 seconds, timeout will occur
+			3.) Disable the timeout after recv the total number of frames
+			4.) Recieve all the frames sequentially and then send frame ID as the Ack
+			5.) Discard the duplicate frames.
+			6.) Write the recieved data frame into a file.
+
+	put [filename]		-	This command is used to transfer the specified file into server.
+	==============
+	
+	The implementation is similiar to 'get' request except here the client will initiate the
+	transmission, transfer the file and the server will recieve the file.
+
+	delete [filename]	-	This command is used to delete the specified file in the server side
+	=================
+
+		SERVER side Implementation
+
+			1.) On recieving the 'delete' request from client, the server first checks if
+			    the filename is specified or not. If filename is NULL, then the server 
+			    sends an negative number or zero, to indicate the error
+			2.) If the filename is valid, then the file is removed and a positive ack is sent
+
+	ls			-	list all the files present in the server side
+	==
+
+		In this case, the server scans all the files and directories in the present folder and transfers
+		the entire list to the client.
+
+	exit			-	Closes the client and server
+	====
