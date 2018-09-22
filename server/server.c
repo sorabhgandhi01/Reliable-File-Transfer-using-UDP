@@ -1,4 +1,19 @@
-#include "c_utility.h"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdarg.h>
+#include <dirent.h>
+
+#define BUF_SIZE 2048
 
 struct frame_t {
 	long int ID;
@@ -16,10 +31,7 @@ int ls(FILE *f)
 	}
         
 	while (n--) {
-		//printf("%s		%d\n", dirent[n]->d_name, dirent[n]->d_type);
-
 		fprintf(f, "%s\n", dirent[n]->d_name);
-
 		free(dirent[n]); 
 	}
 	
@@ -54,16 +66,16 @@ int main(int argc, char **argv)
 	struct frame_t frame;
 	struct timeval t_out = {0, 0};
 
-	int sfd;
-	long int ack_num = 0;
+	char msg_recv[BUF_SIZE];
+	char flname_recv[20];
+	char cmd_recv[10];
+
 	ssize_t numRead;
 	ssize_t length;
-	off_t f_size;
-	char ack_send[4] = "ACK";
-	//char ack_recv[4];
-	char cmd_recv[10];
-	char flname_recv[20];
-	char msg_recv[BUF_SIZE];
+	off_t f_size; 	
+	long int ack_num = 0;
+	int ack_send = 0;
+	int sfd;
 
 	FILE *fptr;
 
@@ -95,7 +107,10 @@ int main(int argc, char **argv)
 
 		sscanf(msg_recv, "%s %s", cmd_recv, flname_recv);
 
+/*----------------------------------------------------------------------"get case"-------------------------------------------------------------------------*/
+
 		if ((strcmp(cmd_recv, "get") == 0) && (flname_recv[0] != '\0')) {
+
 			print_msg("Server: Get called with file name --> %s\n", flname_recv);
 			if (access(flname_recv, F_OK) == 0) {
 				
@@ -106,6 +121,7 @@ int main(int argc, char **argv)
 				f_size = st.st_size;			//Size of the file
 
 				t_out.tv_sec = 2;
+				t_out.tv_usec = 0;
 				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval));   //Set timeout for ack reciving from client
 
 				fptr = fopen(flname_recv, "rb");        //open the file to be sent
@@ -162,6 +178,7 @@ int main(int argc, char **argv)
 					}
 
 					resend_frame = 0;
+					drop_frame = 0;
 
 					if (t_out_flag == 1) {
 						printf("File not sent\n");
@@ -176,27 +193,37 @@ int main(int argc, char **argv)
 				fclose(fptr);
 
 				t_out.tv_sec = 0;
+				t_out.tv_usec = 0;
 				setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 			}
-			else {
-				//sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			else {	
 				printf("Invalid Filename\n");
 			}
 		}
 
+/*----------------------------------------------------------------------"put case"-------------------------------------------------------------------------*/
+
 		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] != '\0')) {
+
 			print_msg("Server: Put called with file name --> %s\n", flname_recv);
 
-			long int total_pckt = 0, bytes_rec = 0, i = 0;
+			long int total_frame = 0, bytes_rec = 0, i = 0;
+			
+			t_out.tv_sec = 2;
+			setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
 
-			recvfrom(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
-			sendto(sfd, &(total_pckt), sizeof(total_pckt), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
-			printf("Total frame ---> %ld\n", total_pckt);
-
-			if (total_pckt > 0) {
+			recvfrom(sfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &cl_addr, (socklen_t *) &length);
+			
+			t_out.tv_sec = 0;
+			setsockopt(sfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&t_out, sizeof(struct timeval)); 
+			
+			if (total_frame > 0) {
+				sendto(sfd, &(total_frame), sizeof(total_frame), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				printf("Total frame ---> %ld\n", total_frame);
+	
 				fptr = fopen(flname_recv, "wb");
 
-				for (i = 1; i <= total_pckt; i++)
+				for (i = 1; i <= total_frame; i++)
 				{
 					memset(&frame, 0, sizeof(frame));
 
@@ -212,7 +239,7 @@ int main(int argc, char **argv)
 						bytes_rec += frame.length;
 					}
 					
-					if (i == total_pckt)
+					if (i == total_frame)
 						printf("File recieved\n");
 				}
 			       printf("Total bytes recieved ---> %ld\n", bytes_rec);
@@ -222,20 +249,31 @@ int main(int argc, char **argv)
 				printf("File is empty\n");
 			}
 		}
+
+/*----------------------------------------------------------------------"delete case"-------------------------------------------------------------------------*/
+
 		else if ((strcmp(cmd_recv, "delete") == 0) && (flname_recv[0] != '\0')) {
 
-			if(access(flname_recv, F_OK) == -1)
-				sendto(sfd, "Invalid Filename", 16, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			if(access(flname_recv, F_OK) == -1) {
+				ack_send = -1;
+				sendto(sfd, &(ack_send), sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+			}
 			else{
-				if(access(flname_recv, R_OK) == -1)
-					sendto(sfd, "File does not have read permission", 34, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				if(access(flname_recv, R_OK) == -1) {
+					ack_send = 0;
+					sendto(sfd, &(ack_send), sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+				}
 				else {
 					print_msg("Filename is %s\n", flname_recv);
 					remove(flname_recv);
-					sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
+					ack_send = 1;
+					sendto(sfd, &(ack_send), sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 				}
 			}
 		}
+
+/*----------------------------------------------------------------------"ls case"----------------------------------------------------------------------------*/
+
 		else if (strcmp(cmd_recv, "ls") == 0) {
 			
 			char file_entry[200];
@@ -259,21 +297,19 @@ int main(int argc, char **argv)
 			remove("a.log");
 			fclose(fptr);
 		}
-		else if (strcmp(cmd_recv, "exit") == 0) {
-			if (sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)
-				print_error("Server: send");
 
+/*--------------------------------------------------------------------"exit case"----------------------------------------------------------------------------*/
+
+		else if (strcmp(cmd_recv, "exit") == 0) {
 			close(sfd);
 			exit(EXIT_SUCCESS);
 		}
+
+/*--------------------------------------------------------------------"Invalid case"-------------------------------------------------------------------------*/
+
 		else {
 			print_msg("Server: Unkown command. Please try again\n");
-			break;
-
-		//	if (sendto(sfd, ack_send, sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)
-		//		print_error("Server: send");
 		}
-		//
 	}
 	
 	close(sfd);
