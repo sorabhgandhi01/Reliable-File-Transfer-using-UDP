@@ -1,15 +1,15 @@
 INTRODUCTION
 ------------
 	The UDP Socket programming consists of a client and the server. The client interacts with the 
-user, gets the user commands and sends to the server. The main purpose of the server is to collect the 
-data based on the user's input and send back to the client. In this project, a reliable connectionless 
-file transmission model is implemented using User Datagram Protocol (UDP). This project is part of 
-Network Systems (CSCI 5273) course offered at University of colorado, Boulder.
+	user, gets the user commands and sends to the server. The main purpose of the server is to collect the 
+	data based on the user's input and send back to the client. In this project, a reliable connectionless 
+	file transmission model is implemented using User Datagram Protocol (UDP). This project is part of 
+	Network Systems (CSCI 5273) course offered at University of colorado, Boulder.
 
 BUILD and RUN STEPS
 -------------------
 	This project only supports Linux development environment. The following section covers in 
-details on how to build and run the client and server module.
+	details on how to build and run the client and server module.
 
 	Note:- The build system for this project uses GNU MAKE utility.
 
@@ -39,7 +39,7 @@ details on how to build and run the client and server module.
 IMPLEMENTATION SUMMARY
 ----------------------
 	The client side implements an user interaction module and publishes the supported commands. 
-The following section covers in detail on how client and server interact on each user command.
+	The following section covers in detail on how client and server interact on each user command.
 
 	The supported user command includes,
 
