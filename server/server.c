@@ -48,7 +48,7 @@ SOFTWARE.
 #include <dirent.h>
 
 
-#define BUF_SIZE 2048		//Max buffer size of the data in a frame
+#define BUF_SIZE (2048)		//Max buffer size of the data in a frame
 
 /*A frame packet with unique id, length and data*/
 struct frame_t {
@@ -89,14 +89,6 @@ int ls(FILE *f)
 	return 0; 
 }                                             
 
-static void print_msg(const char *msg, ...)
-{
-	va_list va_args;
-	va_start(va_args, msg);
-	vprintf(msg, va_args);
-	va_end(va_args);
-	fflush(stdout);
-}
 
 /**
 -------------------------------------------------------------------------------------------------
@@ -121,7 +113,7 @@ int main(int argc, char **argv)
 {
 	/*check for appropriate commandline arguments*/
 	if ((argc < 2) || (argc > 2)) {				
-		print_msg("Usage --> ./[%s] [Port Number]\n", argv[0]);		//Should have a port number > 5000
+		printf("Usage --> ./[%s] [Port Number]\n", argv[0]);		//Should have a port number > 5000
 		exit(EXIT_FAILURE);
 	}
 
@@ -156,7 +148,7 @@ int main(int argc, char **argv)
 		print_error("Server: bind");
 
 	for(;;) {
-		print_msg("Server: Waiting for client to connect\n");
+		printf("Server: Waiting for client to connect\n");
 
 		memset(msg_recv, 0, sizeof(msg_recv));
 		memset(cmd_recv, 0, sizeof(cmd_recv));
@@ -168,7 +160,7 @@ int main(int argc, char **argv)
 			print_error("Server: recieve");
 
 		//print_msg("Server: Recieved %ld bytes from %s\n", numRead, cl_addr.sin_addr.s_addr);
-		print_msg("Server: The recieved message ---> %s\n", msg_recv);
+		printf("Server: The recieved message ---> %s\n", msg_recv);
 
 		sscanf(msg_recv, "%s %s", cmd_recv, flname_recv);
 
@@ -176,7 +168,7 @@ int main(int argc, char **argv)
 
 		if ((strcmp(cmd_recv, "get") == 0) && (flname_recv[0] != '\0')) {
 
-			print_msg("Server: Get called with file name --> %s\n", flname_recv);
+			printf("Server: Get called with file name --> %s\n", flname_recv);
 
 			if (access(flname_recv, F_OK) == 0) {			//Check if file exist
 				
@@ -277,7 +269,7 @@ int main(int argc, char **argv)
 
 		else if ((strcmp(cmd_recv, "put") == 0) && (flname_recv[0] != '\0')) {
 
-			print_msg("Server: Put called with file name --> %s\n", flname_recv);
+			printf("Server: Put called with file name --> %s\n", flname_recv);
 
 			long int total_frame = 0, bytes_rec = 0, i = 0;
 			
@@ -338,7 +330,7 @@ int main(int argc, char **argv)
 					sendto(sfd, &(ack_send), sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr));
 				}
 				else {
-					print_msg("Filename is %s\n", flname_recv);
+					printf("Filename is %s\n", flname_recv);
 					remove(flname_recv);  //delete the file
 					ack_send = 1;
 					sendto(sfd, &(ack_send), sizeof(ack_send), 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)); //send the positive acknowledgement
@@ -363,7 +355,7 @@ int main(int argc, char **argv)
 			fptr = fopen("a.log", "rb");	
 			int filesize = fread(file_entry, 1, 200, fptr);		
 
-			print_msg("Filesize = %d	%ld\n", filesize, strlen(file_entry));
+			printf("Filesize = %d	%ld\n", filesize, strlen(file_entry));
 			
 			if (sendto(sfd, file_entry, filesize, 0, (struct sockaddr *) &cl_addr, sizeof(cl_addr)) == -1)  //Send the file list
 				print_error("Server: send");
@@ -382,7 +374,7 @@ int main(int argc, char **argv)
 /*--------------------------------------------------------------------"Invalid case"-------------------------------------------------------------------------*/
 
 		else {
-			print_msg("Server: Unkown command. Please try again\n");
+			printf("Server: Unkown command. Please try again\n");
 		}
 	}
 	
