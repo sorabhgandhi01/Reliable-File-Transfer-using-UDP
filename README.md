@@ -1,10 +1,10 @@
 INTRODUCTION
 ------------
-	The UDP Socket programming consists of a client and the server. The client interacts with the 
-	user, gets the user command and sends it to the server. The main purpose of the server is to collect 
-	the data based on the user's input and send back to the client. In this project, a reliable 
-	connectionless file transmission model is implemented using User Datagram Protocol (UDP). This 
-	project is part of Network Systems (CSCI 5273) course.
+	This project on UDP Socket programming consists of a client and the server. The client interacts 
+	with the user, gets the user command and sends it to the server. The main purpose of the server 
+	is to collect the data based on the user's input and send back to the client. In this project, 
+	a reliable connectionless file transmission model is implemented using User Datagram Protocol 
+	(UDP). This project is part of Network Systems (CSCI 5273) course.
 
 BUILD and RUN STEPS
 -------------------
@@ -54,19 +54,20 @@ IMPLEMENTATION SUMMARY
 			2.) Then it checks if the specified file is present and have appropriate read 
 			    permission. If the file is not present or does not have appropriate 
 			    permission, then server does not send anything back to the client
-			3.) Set a timeout of 2 seconds for the recieve call on the server socket
-			4.) After this it opens the file, gets the file size and calculates the number 
-			    of frames required to send the file
+			3.) If the specified file is valid, then it sets a timeout of 2 seconds for 
+			    the recieve call on the server socket
+			4.) After this it opens the specified file, gets the file size and calculates 
+			    the number of frames required to send the file
 			5.) First it sends the total number of frames and then checks if the recieved 
 			    acknowledegement matches to the total number of frames
-			6.) Finally send all the frames sequentially and check the recieved ack. If 
-			    ack does not match then keep resending the frames till the ack matches
+			6.) Finally it sends all the frames sequentially and check the recieved ack. If 
+			    ack does not match then it keeps resending the frames till the ack matches
 
 		CLIENT side Implementation
 
 			1.) Server does not transfer any message if the filename is NULL or not present
 			    in the directory
-			2.) Set a timeout of 2 seconds for the recieve call on the client packet. If
+			2.) So, it sets a timeout of 2 seconds for the recieve call on the client packet. If
 			    client does not recieve the number of frames in 2 seconds, timeout will occur
 			3.) Disable the timeout after receiving the total number of frames
 			4.) Recieve all the frames sequentially and then send frame ID as the Ack
