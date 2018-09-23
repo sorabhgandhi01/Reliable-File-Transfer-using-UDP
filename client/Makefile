@@ -1,6 +1,5 @@
-default : client
+all : client
 objects = *.o
-INC = -I../
 
 client : client.o
 	cc -Wall -Werror -o client client.o

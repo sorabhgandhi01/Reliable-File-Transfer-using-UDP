@@ -16,10 +16,10 @@ BUILD and RUN STEPS
 	PROJECT BUILD STEPS
 	===================
 
-	1.) Go to the project folder, cd UDP/
+	1.) Go to the project folder, cd [FolderName]/
 	
 	2.) Run make (This command compiles both client and server present in a different folder 
-	    and generates an respective executable.
+	    and generates an respective executable)
 
 	RUN STEPS
 	=========
@@ -28,7 +28,7 @@ BUILD and RUN STEPS
 	
 		1.) ./server [PORT]
 
-		Note:- Use an unreserved port > 
+		Note:- Use an unreserved port > 5000
 
 	For CLIENT module:
 
