@@ -1,7 +1,5 @@
-default = server
+all : server
 objects = *.o
-
-INC = -I../
 
 server : server.o
 	cc -Wall -Werror -g -o server server.o

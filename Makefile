@@ -1,13 +1,13 @@
 SUBDIRS = client server
-SRC = client server
 
-.PHONY: all $(SUBDIRS)
-all: $(SUBDIRS)
-$(SUBDIRS):
-	$(MAKE) -C $@ -f Makefile
+#.PHONY: all $(SUBDIRS)
+#all: $(SUBDIRS)
+#$(SUBDIRS):
+#	$(MAKE) -C $@ -f Makefile
 
-.PHONY: clean $(SRC)
-clean: $(SRC)
-$(SRC): 
-	$(MAKE) -C $@ -f Makefile
+.PHONY: all clean
 
+all clean:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir -f Makefile $@; \
+	done
